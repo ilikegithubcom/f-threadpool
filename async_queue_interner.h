@@ -18,7 +18,7 @@ typedef struct async_queue
     int              efd;     //event fd,
     int              epollfd; // epoll fd
 
-    /* 调试变量 */
+    // 调试变量
     long long        tasked;  // 已经处理完的任务数量
 } async_queue_t;
 

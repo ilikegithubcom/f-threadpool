@@ -76,16 +76,15 @@ task_t* async_cond_queue_pop_head(async_queue_t* q, int timeout)
         while (queue_is_empty(q->queue) && (q->quit == 0))
         {
             gettimeofday(&now, NULL);
-            if (now.tv_usec + timeout > 1000)
-            {
-                outtime.tv_sec = now.tv_sec + 1;
-                outtime.tv_nsec = ((now.tv_usec + timeout) % 1000) * 1000;
-            }
-            else
-            {
-                outtime.tv_sec = now.tv_sec;
-                outtime.tv_nsec = (now.tv_usec + timeout) * 1000;
-            }
+            int timeout_ms = timeout;   // ms
+            // timeout_ms分为秒部分和毫秒部分
+            // 超时的纳秒=当前时间的微秒+timeout_ms的毫秒部分
+            int nsec = now.tv_usec * 1000 + (timeout_ms % 1000) * 1000000;
+            // 超时时间的纳秒部分=超时的纳秒的纳秒部分
+            outtime.tv_nsec = nsec % 1000000000;
+            // 超时时间的秒部分=当时时间的秒+超时的纳秒的秒部分+imtout_ms的秒部分
+            outtime.tv_sec = now.tv_sec + nsec / 1000000000 + timeout_ms / 1000;
+            // 执行后不阻塞，其它线程可进入。当收到信号量时，继续阻塞，其它线程不可进入
             pthread_cond_timedwait(&(q->cond), &(q->mutex), &outtime);
         }
         q->waiting_threads--;
@@ -93,7 +92,7 @@ task_t* async_cond_queue_pop_head(async_queue_t* q, int timeout)
 
     task = queue_pop_head(q->queue);
 
-    /* 调试代码 */
+    /* ??????? */
     if (task)
     {
         q->tasked ++;
